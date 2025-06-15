@@ -1,13 +1,7 @@
 {
  "name": "Arcade NOE Workspace",
  "image": "mcr.microsoft.com/devcontainers/typescript-node:18",
- "features": {
-   "ghcr.io/devcontainers/features/pnpm:1": {
-     "version": "8"
-   },
-   "ghcr.io/devcontainers/features/go-task:1": {}
- },
- "postCreateCommand": "pnpm install -g @go-task/cli && pnpm install",
+"postCreateCommand": "corepack enable && corepack prepare pnpm@8.15.5 --activate && npm install -g @go-task/cli && pnpm install",
  "customizations": {
    "vscode": {
      "settings": {
