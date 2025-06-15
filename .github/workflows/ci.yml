@@ -27,11 +27,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       
+      - name: Install Task CLI
+        run: pnpm add -g @go-task/cli
+
       - name: Lint
-        run: pnpm lint
+        run: task lint
       
       - name: Type check
-        run: pnpm typecheck
+        run: task typecheck
       
       - name: Test
-        run: pnpm test
+        run: task test
