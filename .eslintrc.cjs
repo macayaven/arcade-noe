@@ -27,6 +27,10 @@ module.exports = {
       node: {
         extensions: ['.js', '.jsx', '.ts', '.tsx'],
       },
+      // Enable eslint-plugin-import to resolve TypeScript paths/types properly
+      typescript: {
+        project: './tsconfig.base.json',
+      },
     },
   },
   rules: {
