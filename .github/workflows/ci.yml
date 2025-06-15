@@ -1,0 +1,33 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          # Cache pnpm packages - this might need pnpm to be installed first
+          # cache: 'pnpm' - Commenting out for now due to pnpm install issues
+
+      # Placeholder for pnpm installation if not cached or available by default
+      # - name: Install pnpm
+      #   run: npm install -g pnpm
+
+      # Placeholder for dependency installation
+      # - name: Install dependencies
+      #   run: pnpm install --frozen-lockfile
+
+      - name: Run linters
+        run: echo "TODO: Add linting command here once dependencies can be installed"
+        # run: task lint # This would be the ideal command
+
+      - name: Run tests
+        run: echo "TODO: Add test command here once dependencies can be installed"
+        # run: task test # This would be the ideal command
