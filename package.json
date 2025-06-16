@@ -19,6 +19,7 @@
     "zod": "^3.25.64"
   },
   "devDependencies": {
+    "@playwright/test": "^1.53.0",
     "@types/jest": "^29.5.14",
     "@types/seedrandom": "^3.0.8",
     "jest": "^30.0.0",

@@ -10,7 +10,7 @@ const GeneralVariationSchema = z.object({
 type GeneralVariation = z.infer<typeof GeneralVariationSchema>;
 
 // Snake Game Specific Variation Schema
-const SnakeVariationSchema = z.object({
+export const SnakeVariationSchema = z.object({
   seed: z.string(),
   speed: z.number().min(50).max(300), // e.g., interval in ms
   color: z.enum(['green', 'blue', 'yellow', 'purple', 'orange']),
@@ -19,16 +19,24 @@ const SnakeVariationSchema = z.object({
 type SnakeVariation = z.infer<typeof SnakeVariationSchema>;
 
 // Flappy Bird Specific Variation Schema
-const FlappyVariationSchema = z.object({
+export const FlappyVariationSchema = z.object({
   seed: z.string().min(1), // Seed should be a non-empty string
   gap: z.number().min(100).max(200), // Pipe opening size in pixels
   gravity: z.number().min(0.1).max(0.5), // Strength of gravity (e.g. 0.1 to 0.5 is a wider, perhaps better range)
 });
 type FlappyVariation = z.infer<typeof FlappyVariationSchema>;
 
+// Breakout Game Specific Variation Schema
+export const BreakoutVariationSchema = z.object({
+  seed: z.string().min(1),
+  paddleSize: z.enum(['small', 'medium', 'large']),
+  ballSpeed: z.enum(['slow', 'normal', 'fast']),
+});
+type BreakoutVariation = z.infer<typeof BreakoutVariationSchema>;
+
 
 // Union type for all possible variations
-type GameVariation = GeneralVariation | SnakeVariation | FlappyVariation; // Added FlappyVariation
+type GameVariation = GeneralVariation | SnakeVariation | FlappyVariation | BreakoutVariation;
 
 export function generateVariation(gameId: string): GameVariation | { error: string } {
   // For Flappy Bird, we want a new random seed each time, not derived from gameId.
@@ -42,8 +50,9 @@ export function generateVariation(gameId: string): GameVariation | { error: stri
     rng = seedrandom(seedString); // Initialize RNG with this new random seed
   } else {
     // For Snake or General, use gameId for potentially stable seed generation if desired
-    seedString = seedrandom(gameId)().toString(); // Original way to get a seed string based on gameId
-    rng = seedrandom(seedString); // Re-initialize RNG with this potentially stable seed for consistent outputs
+    // Ensure seedString is generated consistently for Breakout as well
+    seedString = seedrandom(gameId)().toString();
+    rng = seedrandom(seedString); // Re-initialize RNG with this seed for consistent outputs for this gameId
   }
 
 
@@ -96,6 +105,23 @@ export function generateVariation(gameId: string): GameVariation | { error: stri
     // GeneralVariationSchema.parse(variation);
     // return variation;
     return { error: `Unknown gameId: ${gameId}` };
+
+  } else if (gameId.toLowerCase() === 'breakout') {
+    const paddleSizes = BreakoutVariationSchema.shape.paddleSize.options;
+    const ballSpeeds = BreakoutVariationSchema.shape.ballSpeed.options;
+
+    const variation: BreakoutVariation = {
+      seed: seedString, // Use the generated seedString
+      paddleSize: paddleSizes[Math.floor(rng() * paddleSizes.length)],
+      ballSpeed: ballSpeeds[Math.floor(rng() * ballSpeeds.length)],
+    };
+    // Validate before returning
+    const parseResult = BreakoutVariationSchema.safeParse(variation);
+    if (!parseResult.success) {
+        console.error("Breakout variation validation error:", parseResult.error);
+        return { error: "Failed to generate valid Breakout variation." };
+    }
+    return parseResult.data;
   }
 }
 
