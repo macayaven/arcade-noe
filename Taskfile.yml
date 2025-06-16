@@ -24,7 +24,7 @@ tasks:
   e2e:
     desc: "Run Playwright smoke tests"
     cmds:
-      - echo "TODO: Implement e2e task (Playwright)" # Placeholder
+      - pnpm run test:e2e
 
   build:
     desc: "Run Vite build + tsc + docker build"

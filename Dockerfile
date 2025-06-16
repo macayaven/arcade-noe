@@ -26,4 +26,7 @@ COPY apps/backend/package.json /app/apps/backend/package.json
 COPY package.json ./
 
 EXPOSE 3001
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD curl --fail http://localhost:3001/ping || exit 1
+
 CMD ["node", "apps/backend/dist/index.js"]
