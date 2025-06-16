@@ -3,11 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game</title>
+    <title>Mini Arcade</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <canvas id="game-canvas"></canvas>
+    <header>
+        <h1>Choose a Game</h1>
+    </header>
+
+    <main>
+        <div id="game-selection" class="game-selection-container">
+            <div class="game-card">
+                <h2>Snake</h2>
+                <canvas id="snake-canvas-placeholder" class="game-canvas-placeholder" width="200" height="150"></canvas>
+                <button id="play-snake" class="button play-button">Play Snake</button>
+            </div>
+
+            <div class="game-card">
+                <h2>Flappy Bird</h2>
+                <canvas id="flappy-canvas-placeholder" class="game-canvas-placeholder" width="200" height="150"></canvas>
+                <button id="play-flappy" class="button play-button">Play Flappy Bird</button>
+            </div>
+        </div>
+
+        <div id="game-active-area" style="display: none;">
+            <button id="back-to-menu" class="button back-button" style="display: none;">Back to Menu</button>
+            <canvas id="game-canvas"></canvas> <!-- Main game canvas -->
+        </div>
+    </main>
+
+    <footer>
+        <p>Enjoy the games!</p>
+    </footer>
+
     <script type="module" src="src/main.ts"></script>
 </body>
 </html>

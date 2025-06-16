@@ -202,6 +202,5 @@ window.addEventListener('DOMContentLoaded', () => {
             ctx.fillRect(0, 0, breakoutPlaceholder.width, breakoutPlaceholder.height);
             ctx.fillStyle = 'black'; ctx.font = '20px Arial'; ctx.textAlign = 'center';
             ctx.fillText('Breakout', breakoutPlaceholder.width / 2, breakoutPlaceholder.height / 2);
-        }
     }
 });
