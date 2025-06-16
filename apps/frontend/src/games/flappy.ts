@@ -191,22 +191,27 @@ export class FlappyGame {
   private update() {
     if (!this.gameRunning) return;
     
-    this.updateBird();
-    this.updatePipes();
-    this.updatePowerUps();
-    this.checkCollisions();
-    this.spawnPipes();
-    this.render();
-    
-    // Check game over conditions
-    if (this.bird.y > this.canvas.height || this.bird.y < 0) {
-      if (!this.shieldActive) {
-        this.gameOver();
-        return;
+    try {
+      this.updateBird();
+      this.updatePipes();
+      this.updatePowerUps();
+      this.checkCollisions();
+      this.spawnPipes();
+      this.render();
+      
+      // Check game over conditions
+      if (this.bird.y > this.canvas.height || this.bird.y < 0) {
+        if (!this.shieldActive) {
+          this.gameOver();
+          return;
+        }
       }
+      
+      this.gameLoop = requestAnimationFrame(this.update.bind(this));
+    } catch (error) {
+      console.error('Flappy Bird game error:', error);
+      this.gameOver();
     }
-    
-    this.gameLoop = requestAnimationFrame(this.update.bind(this));
   }
 
   private updateBird() {
@@ -346,8 +351,13 @@ export class FlappyGame {
   }
 
   private render() {
-    // Clear canvas with theme background
-    this.ctx.fillStyle = this.variation.theme.backgroundColor;
+    // Clear canvas with ANIMATED GRADIENT for epic feel!
+    const time = Date.now() * 0.001;
+    const gradient = this.ctx.createLinearGradient(0, 0, this.canvas.width, this.canvas.height);
+    gradient.addColorStop(0, this.variation.theme.backgroundColor);
+    gradient.addColorStop(0.5 + Math.sin(time) * 0.2, this.adjustBrightness(this.variation.theme.backgroundColor, 20));
+    gradient.addColorStop(1, this.variation.theme.backgroundColor);
+    this.ctx.fillStyle = gradient;
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     
     // Draw pipes
@@ -391,16 +401,21 @@ export class FlappyGame {
     this.ctx.translate(this.bird.x + this.bird.size/2, this.bird.y + this.bird.size/2);
     this.ctx.rotate(this.bird.rotation);
     
-    // Bird body - draw as a circle instead of square
+    // Enhanced bird rendering - draw as a proper bird instead of square
     this.ctx.fillStyle = this.bird.color;
     if (this.ghostMode) {
       this.ctx.globalAlpha = 0.7;
     }
     
-    // Draw bird as a circle
+    // Draw bird as a circle (main body)
     this.ctx.beginPath();
     this.ctx.arc(0, 0, this.bird.size/2, 0, Math.PI * 2);
     this.ctx.fill();
+    
+    // Add shadow/outline for better visibility
+    this.ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    this.ctx.lineWidth = 1;
+    this.ctx.stroke();
     
     // Add a beak
     this.ctx.fillStyle = '#FFA500'; // Orange beak
@@ -434,11 +449,14 @@ export class FlappyGame {
     this.ctx.restore();
     this.ctx.globalAlpha = 1;
     
-    // Draw UI
+    // Enhanced UI with MASSIVE score for drama!
     this.ctx.fillStyle = this.variation.theme.primaryColor;
-    this.ctx.font = '24px Arial';
+    this.ctx.font = 'bold 32px Arial';
     this.ctx.textAlign = 'left';
-    this.ctx.fillText(`Score: ${this.score}`, 10, 30);
+    this.ctx.shadowColor = this.variation.theme.accentColor;
+    this.ctx.shadowBlur = 5;
+    this.ctx.fillText(`🏆 ${this.score}`, 15, 40);
+    this.ctx.shadowBlur = 0;
     
     // Draw active power-ups
     let powerUpY = 60;
@@ -469,22 +487,44 @@ export class FlappyGame {
   private gameOver() {
     this.gameRunning = false;
     
-    // Game over screen
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    // EPIC GAME OVER with pulsing effects!
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.95)';
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     
+    const pulse = 1 + Math.sin(Date.now() * 0.01) * 0.1;
+    this.ctx.save();
+    this.ctx.scale(pulse, pulse);
+    this.ctx.translate(this.canvas.width / 2 / pulse, this.canvas.height / 2 / pulse);
+    
     this.ctx.fillStyle = this.variation.theme.primaryColor;
-    this.ctx.font = '48px Arial';
+    this.ctx.font = 'bold 52px Arial';
     this.ctx.textAlign = 'center';
-    this.ctx.fillText('GAME OVER', this.canvas.width / 2, this.canvas.height / 2 - 30);
+    this.ctx.shadowColor = this.variation.theme.accentColor;
+    this.ctx.shadowBlur = 15;
+    this.ctx.fillText('💥 CRASH! 💥', 0, -40);
     
+    this.ctx.shadowBlur = 8;
     this.ctx.fillStyle = this.variation.theme.accentColor;
-    this.ctx.font = '24px Arial';
-    this.ctx.fillText(`Final Score: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + 30);
+    this.ctx.font = 'bold 28px Arial';
+    this.ctx.fillText(`🏆 Final Score: ${this.score}`, 0, 20);
     
+    this.ctx.shadowBlur = 0;
     this.ctx.fillStyle = this.variation.theme.secondaryColor;
     this.ctx.font = '18px Arial';
-    this.ctx.fillText('Click Restart to play again', this.canvas.width / 2, this.canvas.height / 2 + 70);
+    this.ctx.fillText('Click Restart to fly again!', 0, 60);
+    
+    this.ctx.restore();
+  }
+
+  private adjustBrightness(color: string, amount: number): string {
+    if (color.startsWith('#')) {
+      const num = parseInt(color.slice(1), 16);
+      const r = Math.max(0, Math.min(255, (num >> 16) + amount));
+      const g = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amount));
+      const b = Math.max(0, Math.min(255, (num & 0x0000FF) + amount));
+      return `#${(r << 16 | g << 8 | b).toString(16).padStart(6, '0')}`;
+    }
+    return color;
   }
 
   restart() {

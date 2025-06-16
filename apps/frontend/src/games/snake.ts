@@ -36,17 +36,40 @@ interface Food {
   value: number;
 }
 
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  color: string;
+  size: number;
+}
+
+interface SoundEffect {
+  text: string;
+  x: number;
+  y: number;
+  life: number;
+  color: string;
+}
+
 export class SnakeGame {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private variation: GameVariation;
   private snake: Position[] = [];
   private foods: Food[] = [];
+  private particles: Particle[] = [];
+  private soundEffects: SoundEffect[] = [];
   private direction: Position = { x: 1, y: 0 };
   private gameRunning = false;
   private score = 0;
+  private combo = 0;
   private gameLoop: ReturnType<typeof requestAnimationFrame> | null = null;
   private lastUpdateTime = 0;
+  private shakeIntensity = 0;
   
   // Enhanced game settings based on variations
   private gridSize = 20;
@@ -226,8 +249,9 @@ export class SnakeGame {
       if (head.y < 0) head.y = maxY - 1;
       if (head.y >= maxY) head.y = 0;
     } else {
-      // Solid walls - default behavior
+      // Solid walls - default behavior (ensure collision detection works)
       if (head.x < 0 || head.x >= maxX || head.y < 0 || head.y >= maxY) {
+        console.log('Snake hit wall at:', head.x, head.y, 'bounds:', maxX, maxY);
         this.gameOver();
         return;
       }
@@ -246,9 +270,20 @@ export class SnakeGame {
     for (let i = this.foods.length - 1; i >= 0; i--) {
       const food = this.foods[i];
       if (head.x === food.x && head.y === food.y) {
-        this.score += Math.floor(food.value * this.scoreMultiplier);
+        const points = Math.floor(food.value * this.scoreMultiplier);
+        this.score += points;
+        this.combo++;
         this.foods.splice(i, 1);
         foodEaten = true;
+        
+        // 🎆 PARTICLE EXPLOSION!
+        this.createFoodParticles(food.x * this.gridSize + this.gridSize/2, food.y * this.gridSize + this.gridSize/2, food.type);
+        
+        // Screen shake for epic feel!
+        this.shakeIntensity = 8;
+        
+        // 🔊 Visual "sound" effect!
+        this.showSoundEffect(`CHOMP! +${points}`, food.x * this.gridSize, food.y * this.gridSize);
         
         // Activate ghost mode temporarily if modifier is present
         if (this.hasGhostMode) {
@@ -276,11 +311,81 @@ export class SnakeGame {
     while (this.foods.length < this.maxFoods) {
       this.generateFood();
     }
+    
+    // Update particles and effects
+    this.updateParticles();
+    this.updateSoundEffects();
+    
+    // Reduce screen shake
+    if (this.shakeIntensity > 0) {
+      this.shakeIntensity *= 0.9;
+      if (this.shakeIntensity < 0.1) this.shakeIntensity = 0;
+    }
+  }
+
+  private createFoodParticles(x: number, y: number, foodType: number) {
+    const colors = [this.variation.theme.secondaryColor, this.variation.theme.accentColor, this.variation.theme.primaryColor];
+    const particleColor = colors[foodType % colors.length];
+    
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2;
+      const speed = 2 + Math.random() * 4;
+      this.particles.push({
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 30,
+        maxLife: 30,
+        color: particleColor,
+        size: 2 + Math.random() * 3
+      });
+    }
+  }
+
+  private updateParticles() {
+    this.particles = this.particles.filter(particle => {
+      particle.x += particle.vx;
+      particle.y += particle.vy;
+      particle.vx *= 0.98;
+      particle.vy *= 0.98;
+      particle.life--;
+      return particle.life > 0;
+    });
+  }
+
+  private showSoundEffect(text: string, x: number, y: number) {
+    this.soundEffects.push({
+      text,
+      x,
+      y: y - 20,
+      life: 40,
+      color: this.variation.theme.accentColor
+    });
+  }
+
+  private updateSoundEffects() {
+    this.soundEffects = this.soundEffects.filter(effect => {
+      effect.y -= 1;
+      effect.life--;
+      return effect.life > 0;
+    });
   }
 
   private draw() {
-    // Clear canvas
-    this.ctx.fillStyle = this.variation.theme.backgroundColor;
+    // Apply screen shake
+    this.ctx.save();
+    if (this.shakeIntensity > 0) {
+      const shakeX = (Math.random() - 0.5) * this.shakeIntensity;
+      const shakeY = (Math.random() - 0.5) * this.shakeIntensity;
+      this.ctx.translate(shakeX, shakeY);
+    }
+    
+    // Clear canvas with gradient background for style!
+    const gradient = this.ctx.createLinearGradient(0, 0, this.canvas.width, this.canvas.height);
+    gradient.addColorStop(0, this.variation.theme.backgroundColor);
+    gradient.addColorStop(1, this.adjustBrightness(this.variation.theme.backgroundColor, -20));
+    this.ctx.fillStyle = gradient;
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     // Draw snake with pattern
@@ -362,24 +467,71 @@ export class SnakeGame {
       }
     });
 
-    // Draw UI with theme colors
+    // 🎆 Draw particles BEFORE UI
+    this.particles.forEach(particle => {
+      const alpha = particle.life / particle.maxLife;
+      this.ctx.globalAlpha = alpha;
+      this.ctx.fillStyle = particle.color;
+      this.ctx.beginPath();
+      this.ctx.arc(particle.x, particle.y, particle.size * alpha, 0, Math.PI * 2);
+      this.ctx.fill();
+    });
+    this.ctx.globalAlpha = 1;
+
+    // ✨ Draw sound effects!
+    this.soundEffects.forEach(effect => {
+      const alpha = effect.life / 40;
+      this.ctx.globalAlpha = alpha;
+      this.ctx.fillStyle = effect.color;
+      this.ctx.font = 'bold 16px Arial';
+      this.ctx.fillText(effect.text, effect.x, effect.y);
+    });
+    this.ctx.globalAlpha = 1;
+
+    // Draw UI with theme colors and COMBO system!
     this.ctx.fillStyle = this.variation.theme.accentColor;
-    this.ctx.font = '20px Arial';
-    this.ctx.fillText(`Score: ${this.score}`, 10, 30);
+    this.ctx.font = 'bold 24px Arial';
+    this.ctx.fillText(`Score: ${this.score}`, 10, 35);
     
-    // Show active modifiers
+    // COMBO display!
+    if (this.combo > 1) {
+      this.ctx.fillStyle = this.variation.theme.primaryColor;
+      this.ctx.font = 'bold 18px Arial';
+      this.ctx.fillText(`COMBO x${this.combo}!`, 10, 60);
+    }
+    
+    // Show active modifiers with better styling
     if (this.variation.modifiers.length > 0) {
       this.ctx.font = '14px Arial';
       this.ctx.fillStyle = this.variation.theme.secondaryColor;
-      this.ctx.fillText(`Modifiers: ${this.variation.modifiers.join(', ')}`, 10, 55);
+      this.ctx.fillText(`Active: ${this.variation.modifiers.join(' • ')}`, 10, 55);
     }
+    
+    // Show theme and difficulty
+    this.ctx.font = '12px Arial';
+    this.ctx.fillStyle = this.variation.theme.primaryColor;
+    this.ctx.fillText(`${this.variation.theme.name.toUpperCase()} • ${this.variation.difficulty.level.toUpperCase()}`, 10, 75);
     
     // Ghost mode indicator
     if (this.ghostModeTimer > 0) {
       this.ctx.fillStyle = this.variation.theme.accentColor;
       this.ctx.font = '16px Arial';
-      this.ctx.fillText('👻 GHOST MODE', 10, 80);
+      this.ctx.fillText('👻 GHOST MODE', 10, 100);
     }
+    
+    this.ctx.restore(); // Restore screen shake transform
+  }
+
+  private adjustBrightness(color: string, amount: number): string {
+    // Simple brightness adjustment for gradient
+    if (color.startsWith('#')) {
+      const num = parseInt(color.slice(1), 16);
+      const r = Math.max(0, Math.min(255, (num >> 16) + amount));
+      const g = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amount));
+      const b = Math.max(0, Math.min(255, (num & 0x0000FF) + amount));
+      return `#${(r << 16 | g << 8 | b).toString(16).padStart(6, '0')}`;
+    }
+    return color;
   }
 
   private drawStar(x: number, y: number, radius: number) {
@@ -411,19 +563,44 @@ export class SnakeGame {
       this.gameLoop = null;
     }
 
-    // Draw game over message
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    // EPIC EXPLOSION PARTICLES!
+    for (let i = 0; i < 50; i++) {
+      this.particles.push({
+        x: this.canvas.width / 2,
+        y: this.canvas.height / 2,
+        vx: (Math.random() - 0.5) * 10,
+        vy: (Math.random() - 0.5) * 10,
+        life: 60,
+        maxLife: 60,
+        color: [this.variation.theme.primaryColor, this.variation.theme.secondaryColor, this.variation.theme.accentColor][Math.floor(Math.random() * 3)],
+        size: 3 + Math.random() * 5
+      });
+    }
+
+    // Animated game over message
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     
     this.ctx.fillStyle = this.variation.theme.accentColor;
-    this.ctx.font = '48px Arial';
+    this.ctx.font = 'bold 56px Arial';
     this.ctx.textAlign = 'center';
-    this.ctx.fillText('Game Over', this.canvas.width / 2, this.canvas.height / 2 - 50);
+    this.ctx.shadowColor = this.variation.theme.primaryColor;
+    this.ctx.shadowBlur = 10;
+    this.ctx.fillText('💥 GAME OVER 💥', this.canvas.width / 2, this.canvas.height / 2 - 60);
     
-    this.ctx.font = '24px Arial';
+    this.ctx.shadowBlur = 0;
+    this.ctx.font = 'bold 28px Arial';
     this.ctx.fillStyle = this.variation.theme.primaryColor;
-    this.ctx.fillText(`Final Score: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + 20);
-    this.ctx.fillText('Press Restart to play again', this.canvas.width / 2, this.canvas.height / 2 + 60);
+    this.ctx.fillText(`🏆 Final Score: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + 10);
+    
+    if (this.combo > 5) {
+      this.ctx.fillStyle = this.variation.theme.accentColor;
+      this.ctx.fillText(`🔥 Max Combo: ${this.combo}!`, this.canvas.width / 2, this.canvas.height / 2 + 45);
+    }
+    
+    this.ctx.font = '18px Arial';
+    this.ctx.fillStyle = this.variation.theme.secondaryColor;
+    this.ctx.fillText('Click Restart to play again', this.canvas.width / 2, this.canvas.height / 2 + 85);
     
     this.ctx.textAlign = 'left';
   }
@@ -459,6 +636,10 @@ export class SnakeGame {
     if (this.gameLoop) {
       cancelAnimationFrame(this.gameLoop);
     }
+    this.combo = 0;
+    this.particles = [];
+    this.soundEffects = [];
+    this.shakeIntensity = 0;
     this.initGame();
     this.start();
   }

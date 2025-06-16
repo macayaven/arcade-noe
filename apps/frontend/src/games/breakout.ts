@@ -53,6 +53,17 @@ interface PowerUp {
   dy: number;
 }
 
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  color: string;
+  size: number;
+}
+
 export class BreakoutGame {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
@@ -61,10 +72,13 @@ export class BreakoutGame {
   private paddle: { x: number; y: number; width: number; height: number; color: string } = { x: 0, y: 0, width: 0, height: 0, color: '' };
   private bricks: Brick[] = [];
   private powerUps: PowerUp[] = [];
+  private particles: Particle[] = [];
   private gameRunning = false;
   private score = 0;
   private lives = 3;
+  private combo = 0;
   private gameLoop: ReturnType<typeof requestAnimationFrame> | null = null;
+  private shakeIntensity = 0;
   
   // Game settings based on variations
   private baseSpeed: number;
@@ -226,7 +240,14 @@ export class BreakoutGame {
     this.updateBalls();
     this.updatePowerUps();
     this.checkCollisions();
+    this.updateParticles();
     this.render();
+    
+    // Reduce screen shake
+    if (this.shakeIntensity > 0) {
+      this.shakeIntensity *= 0.9;
+      if (this.shakeIntensity < 0.1) this.shakeIntensity = 0;
+    }
     
     // Check win/lose conditions
     if (this.bricks.length === 0) {
@@ -332,8 +353,13 @@ export class BreakoutGame {
           
           ball.dy = -ball.dy;
           brick.hits--;
+          this.combo++;
           
-          const points = (brick.maxHits - brick.hits + 1) * 10;
+          // 💥 BRICK EXPLOSION PARTICLES!
+          this.createBrickParticles(brick.x + brick.width/2, brick.y + brick.height/2, brick.color);
+          this.shakeIntensity = 5;
+          
+          const points = (brick.maxHits - brick.hits + 1) * 10 * this.combo;
           this.score += this.doubleScore ? points * 2 : points;
           
           if (brick.hits <= 0) {
@@ -362,6 +388,33 @@ export class BreakoutGame {
     });
   }
 
+  private createBrickParticles(x: number, y: number, brickColor: string) {
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const speed = 1 + Math.random() * 3;
+      this.particles.push({
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 20,
+        maxLife: 20,
+        color: brickColor,
+        size: 2 + Math.random() * 2
+      });
+    }
+  }
+
+  private updateParticles() {
+    this.particles = this.particles.filter(particle => {
+      particle.x += particle.vx;
+      particle.y += particle.vy;
+      particle.vy += 0.1; // gravity
+      particle.life--;
+      return particle.life > 0;
+    });
+  }
+
   private resetBall() {
     this.balls = [{
       x: this.canvas.width / 2,
@@ -374,8 +427,19 @@ export class BreakoutGame {
   }
 
   private render() {
-    // Clear canvas
-    this.ctx.fillStyle = this.variation.theme.backgroundColor;
+    // Apply screen shake
+    this.ctx.save();
+    if (this.shakeIntensity > 0) {
+      const shakeX = (Math.random() - 0.5) * this.shakeIntensity;
+      const shakeY = (Math.random() - 0.5) * this.shakeIntensity;
+      this.ctx.translate(shakeX, shakeY);
+    }
+    
+    // Clear canvas with dynamic gradient
+    const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+    gradient.addColorStop(0, this.variation.theme.backgroundColor);
+    gradient.addColorStop(1, this.adjustBrightness(this.variation.theme.backgroundColor, -30));
+    this.ctx.fillStyle = gradient;
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     
     // Draw paddle with better visibility
@@ -438,16 +502,63 @@ export class BreakoutGame {
       this.ctx.fillText(icon, powerUp.x + 10, powerUp.y + 14);
     });
     
-    // Draw UI
+    // ✨ Draw particles for epic effects
+    this.particles.forEach(particle => {
+      const alpha = particle.life / particle.maxLife;
+      this.ctx.globalAlpha = alpha;
+      this.ctx.fillStyle = particle.color;
+      this.ctx.beginPath();
+      this.ctx.arc(particle.x, particle.y, particle.size * alpha, 0, Math.PI * 2);
+      this.ctx.fill();
+    });
+    this.ctx.globalAlpha = 1;
+    
+    // Enhanced UI with better visual hierarchy
     this.ctx.fillStyle = this.variation.theme.primaryColor;
-    this.ctx.font = '20px Arial';
+    this.ctx.font = 'bold 28px Arial';
     this.ctx.textAlign = 'left';
-    this.ctx.fillText(`Score: ${this.score}`, 10, 30);
+    this.ctx.fillText(`Score: ${this.score}`, 10, 35);
+    
+    this.ctx.font = '18px Arial';
     this.ctx.fillText(`Lives: ${this.lives}`, 10, 55);
     
-    // Draw theme indicator
+    // Show modifiers with better styling
+    if (this.variation.modifiers.length > 0) {
+      this.ctx.font = '14px Arial';
+      this.ctx.fillStyle = this.variation.theme.secondaryColor;
+      this.ctx.fillText(`Active: ${this.variation.modifiers.join(' • ')}`, 10, 80);
+    }
+    
+    // Show theme and difficulty
+    this.ctx.font = '12px Arial'; 
+    this.ctx.fillStyle = this.variation.theme.accentColor;
+    this.ctx.fillText(`${this.variation.theme.name.toUpperCase()} • ${this.variation.difficulty.level.toUpperCase()}`, 10, 100);
+    
+    // COMBO display!
+    if (this.combo > 1) {
+      this.ctx.fillStyle = this.variation.theme.accentColor;
+      this.ctx.font = 'bold 20px Arial';
+      this.ctx.fillText(`🔥 COMBO x${this.combo}!`, 10, 90);
+    }
+    
+    // Show balls remaining
     this.ctx.textAlign = 'right';
-    this.ctx.fillText(`${this.variation.theme.name.toUpperCase()} THEME`, this.canvas.width - 10, 30);
+    this.ctx.font = '16px Arial';
+    this.ctx.fillStyle = this.variation.theme.primaryColor;
+    this.ctx.fillText(`Balls: ${this.balls.length}`, this.canvas.width - 10, 30);
+    
+    this.ctx.restore(); // Restore screen shake transform
+  }
+
+  private adjustBrightness(color: string, amount: number): string {
+    if (color.startsWith('#')) {
+      const num = parseInt(color.slice(1), 16);
+      const r = Math.max(0, Math.min(255, (num >> 16) + amount));
+      const g = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amount));
+      const b = Math.max(0, Math.min(255, (num & 0x0000FF) + amount));
+      return `#${(r << 16 | g << 8 | b).toString(16).padStart(6, '0')}`;
+    }
+    return color;
   }
 
   private gameWon() {
@@ -471,6 +582,9 @@ export class BreakoutGame {
   restart() {
     this.score = 0;
     this.lives = 3;
+    this.combo = 0;
+    this.particles = [];
+    this.shakeIntensity = 0;
     this.setupGame();
     this.start();
   }
