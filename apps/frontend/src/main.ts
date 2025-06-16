@@ -1,7 +1,11 @@
+console.log('🚀 main.ts is loading...');
+
 import './style.css';
 import { SnakeGame } from './games/snake';
 import { BreakoutGame } from './games/breakout';
 import { FlappyGame } from './games/flappy';
+
+console.log('✅ All imports loaded successfully');
 
 let currentGame: any = null;
 
@@ -62,6 +66,8 @@ function showGameContainer() {
 
 async function startGame(gameId: string) {
   try {
+    console.log(`Starting game: ${gameId}`);
+    
     // Get game variation from backend
     const response = await fetch(`/api/variation/${gameId}`);
     if (!response.ok) {
@@ -69,16 +75,35 @@ async function startGame(gameId: string) {
     }
     const variation = await response.json();
     
+    console.log(`Variation loaded for ${gameId}:`, variation);
+    
     // Show game container
     showGameContainer();
     
-    // Update game info
+    // Update game info with rich variation details
     const gameTitle = document.getElementById('gameTitle')!;
     const gameVariation = document.getElementById('gameVariation')!;
     const gameInstructions = document.getElementById('gameInstructions')!;
     
     gameTitle.textContent = getGameTitle(gameId);
-    gameVariation.textContent = `Variation: ${variation.ruleSet} rules, ${variation.theme} theme`;
+    
+    // Create rich variation description
+    const themeEmoji = getThemeEmoji(variation.theme.name);
+    const difficultyEmoji = getDifficultyEmoji(variation.difficulty.level);
+    const modifierText = variation.modifiers.length > 0 ? 
+      ` • Special: ${variation.modifiers.join(', ')}` : '';
+    
+    gameVariation.innerHTML = `
+      ${themeEmoji} <strong>${variation.theme.name}</strong> theme • 
+      ${difficultyEmoji} <strong>${variation.difficulty.level}</strong> difficulty 
+      (${(variation.difficulty.speedMultiplier * 100).toFixed(0)}% speed)${modifierText}
+    `;
+    
+    // Set theme colors on the container
+    const gameContainer = document.getElementById('gameContainer')!;
+    gameContainer.style.setProperty('--primary-color', variation.theme.primaryColor);
+    gameContainer.style.setProperty('--secondary-color', variation.theme.secondaryColor);
+    gameContainer.style.setProperty('--accent-color', variation.theme.accentColor);
     
     // Get canvas
     const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
@@ -87,15 +112,27 @@ async function startGame(gameId: string) {
     switch (gameId) {
       case 'snake':
         currentGame = new SnakeGame(canvas, variation);
-        gameInstructions.textContent = 'Use arrow keys to move the snake. Eat food to grow!';
+        gameInstructions.innerHTML = `
+          <strong>🐍 Snake Controls:</strong><br>
+          Use arrow keys to move the snake. Eat food to grow!<br>
+          ${getGameSpecificInstructions(gameId, variation)}
+        `;
         break;
       case 'breakout':
         currentGame = new BreakoutGame(canvas, variation);
-        gameInstructions.textContent = 'Use arrow keys or mouse to move the paddle. Break all bricks!';
+        gameInstructions.innerHTML = `
+          <strong>🧱 Breakout Controls:</strong><br>
+          Use arrow keys or mouse to move the paddle. Break all bricks!<br>
+          ${getGameSpecificInstructions(gameId, variation)}
+        `;
         break;
       case 'flappy':
         currentGame = new FlappyGame(canvas, variation);
-        gameInstructions.textContent = 'Press spacebar or click to flap. Avoid the pipes!';
+        gameInstructions.innerHTML = `
+          <strong>🐦 Flappy Bird Controls:</strong><br>
+          Press spacebar or click to flap. Avoid the pipes!<br>
+          ${getGameSpecificInstructions(gameId, variation)}
+        `;
         break;
     }
     
@@ -105,6 +142,63 @@ async function startGame(gameId: string) {
     console.error('Error starting game:', error);
     alert(`Error starting game: ${error instanceof Error ? error.message : String(error)}`);
   }
+}
+
+function getThemeEmoji(themeName: string): string {
+  const themeEmojis: { [key: string]: string } = {
+    'neon': '⚡',
+    'retro': '📼',
+    'pastel': '🌸',
+    'dark': '🌙',
+    'ocean': '🌊',
+    'sunset': '🌅',
+    'forest': '🌲',
+    'cosmic': '🌌'
+  };
+  return themeEmojis[themeName] || '🎨';
+}
+
+function getDifficultyEmoji(difficulty: string): string {
+  const difficultyEmojis: { [key: string]: string } = {
+    'easy': '😊',
+    'normal': '😐',
+    'hard': '😅',
+    'extreme': '😱'
+  };
+  return difficultyEmojis[difficulty] || '🎯';
+}
+
+function getGameSpecificInstructions(gameId: string, variation: any): string {
+  const modifiers = variation.modifiers || [];
+  let instructions = '';
+  
+  if (modifiers.includes('invertedControls')) {
+    instructions += '<span style="color: var(--accent-color);">⚠️ Controls are inverted!</span><br>';
+  }
+  if (modifiers.includes('ghostMode')) {
+    instructions += '<span style="color: var(--accent-color);">👻 Ghost mode activates when eating!</span><br>';
+  }
+  if (modifiers.includes('doubleScore')) {
+    instructions += '<span style="color: var(--accent-color);">⭐ Double score bonus!</span><br>';
+  }
+  if (modifiers.includes('fastStart')) {
+    instructions += '<span style="color: var(--accent-color);">🚀 Fast start enabled!</span><br>';
+  }
+  if (modifiers.includes('slowMotion')) {
+    instructions += '<span style="color: var(--accent-color);">🐌 Slow motion mode!</span><br>';
+  }
+  
+  // Game-specific variations
+  if (gameId === 'snake') {
+    if (variation.gameSpecific?.wallBehavior === 'wrap') {
+      instructions += '<span style="color: var(--secondary-color);">🔄 Walls wrap around!</span><br>';
+    }
+    if (variation.gameSpecific?.foodTypes > 1) {
+      instructions += `<span style="color: var(--secondary-color);">🍎 ${variation.gameSpecific.foodTypes} different food types!</span><br>`;
+    }
+  }
+  
+  return instructions;
 }
 
 function getGameTitle(gameId: string): string {
