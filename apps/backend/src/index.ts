@@ -5,7 +5,7 @@ const server = Fastify({
   logger: true,
 });
 
-server.get('/ping', async (request, reply) => {
+server.get('/api/ping', async (request, reply) => {
   return { pong: 'it worked!' };
 });
 
@@ -26,8 +26,8 @@ server.get('/api/variation/:id', async (request, reply) => {
 
 const start = async () => {
   try {
-    await server.listen({ port: 3001, host: '0.0.0.0' }); // Port 3001 to avoid conflict if frontend is on 3000
-    server.log.info(`Server listening on port 3001`);
+    await server.listen({ port: 3002, host: '0.0.0.0' }); // Changed to port 3002 to avoid conflict
+    server.log.info(`Server listening on port 3002`);
   } catch (err) {
     server.log.error(err);
     process.exit(1);

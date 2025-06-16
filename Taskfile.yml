@@ -4,33 +4,34 @@ tasks:
   dev:
     desc: "Run Vite + Fastify in watch mode"
     cmds:
-      - echo "TODO: Implement dev task (Vite + Fastify watch)"
+      - pnpm --filter frontend dev &
+      - pnpm --filter backend dev
 
   lint:
     desc: "Run ESLint and Prettier checks"
     cmds:
-      - pnpm lint # Assumes pnpm is available and lint script is in root package.json
+      - pnpm lint
 
   typecheck:
     desc: "Run TypeScript compiler to check types"
     cmds:
-      - echo "TODO: Implement typecheck task (tsc --noEmit)" # Placeholder
+      - pnpm -r typecheck
 
   test:
     desc: "Run Vitest unit tests"
     cmds:
-      - pnpm test # Assumes pnpm is available and test script is in root package.json
+      - pnpm test
 
   e2e:
     desc: "Run Playwright smoke tests"
     cmds:
-      - echo "TODO: Implement e2e task (Playwright)" # Placeholder
+      - echo "TODO - Implement e2e task"
 
   build:
-    desc: "Run Vite build + tsc + docker build"
+    desc: "Run Vite build + tsc"
     cmds:
-      - echo "TODO: Implement build task (Vite, tsc, Docker)" # Placeholder
+      - pnpm -r build
 
   default:
     cmds:
-      - task: --list
+      - task --list
