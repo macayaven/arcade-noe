@@ -112,7 +112,7 @@ P-3	Snake Game	Canvas loop, arrow-key control, variation hooks (speed / color)	U
 P-4	Flappy Game	Gravity, obstacles, variation (gap, gravity)	Same test style
 P-5	Breakout Game	Brick grid, paddle, variation (paddle size, ball speed)	Same test style
 P-6	Session Logging	/api/session/:id POST; console log; vitest spies	API call from each game on load & game-over
-P-7	Prod Docker	Multi-stage build; healthcheck; docs (README.md)	docker run -p 3000:3000 arcade-variants passes smoke E2E
+P-7	Prod Docker	Multi-stage build; healthcheck; docs (README.md)	docker run -p 3001:3001 arcade-variants passes smoke E2E
 
 
 ⸻
@@ -129,7 +129,8 @@ task e2e          # Playwright smoke
 
 # Build / Run
 task build        # Vite build + tsc + docker build
-docker run -p 3000:3000 arcade-variants:latest
+docker build -t arcade-variants:latest .
+docker run -p 3001:3001 arcade-variants:latest
 
 
 ⸻
